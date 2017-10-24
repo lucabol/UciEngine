@@ -22,7 +22,7 @@ public static class HumanMoves
             .FirstOrDefault(q => string.Compare(q.Key, "fen", true) == 0)
             .Value;
 
-        var candidates = CommonChess.GetCandidateMoves(engineCommand, workingDir, WebUtility.UrlDecode(fen1));
+        var candidates = CommonChess.GetHumanCandidateMoves(engineCommand, workingDir, WebUtility.UrlDecode(fen1));
         // Fetching the name from the path parameter in the request URL
         return req.CreateResponse(HttpStatusCode.OK, candidates);
     }
