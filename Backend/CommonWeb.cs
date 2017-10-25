@@ -10,11 +10,7 @@ static class CommonWeb
     {
         if (IsAzureEnvironment)
         {
-            return Path.Combine(Directory.GetCurrentDirectory(), "../", "Engines");
-            //return @"d:\home\site\wwwroot\engines";
-            //string localPath = req.RequestUri.LocalPath;
-            //string functionName = localPath.Substring(localPath.LastIndexOf('/') + 1);
-            //return Path.Combine(@"d:\home\site\wwwroot", functionName);
+            return Path.Combine(Directory.GetCurrentDirectory(), "../", "Engines"); // current directory for azure function is a subdir, which doesn't match the local configuration. Ohh boy ...
         }
         else
         {
