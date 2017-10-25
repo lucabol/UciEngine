@@ -10,7 +10,7 @@ static class CommonWeb
     {
         if (IsAzureEnvironment)
         {
-            return @"d:\home\site\wwwroot\engines"
+            return @"d:\home\site\wwwroot\engines";
         }
         else
         {
