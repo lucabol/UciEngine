@@ -10,7 +10,8 @@ static class CommonWeb
     {
         if (IsAzureEnvironment)
         {
-            return @"d:\home\site\wwwroot\engines";
+            return Path.Combine(Directory.GetCurrentDirectory(), "Engines");
+            //return @"d:\home\site\wwwroot\engines";
             //string localPath = req.RequestUri.LocalPath;
             //string functionName = localPath.Substring(localPath.LastIndexOf('/') + 1);
             //return Path.Combine(@"d:\home\site\wwwroot", functionName);
