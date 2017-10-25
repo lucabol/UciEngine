@@ -149,8 +149,8 @@ public static class CommonChess
         if (idx == -1) return null; // skip over different info lines
         if (tokens[idx + 1] == "cp")
         {
-            c.Score = int.Parse(tokens[idx + 2]);
             c.IsMate = false;
+            c.Score = int.Parse(tokens[idx + 2]);
         }
         else if (tokens[idx + 1] == "mate")
         {
@@ -184,7 +184,8 @@ public static class CommonChess
 
     public static string MAlgToAlg(Position pos, string malg, bool isCheck, bool isTake)
     {
-        var check = isCheck ? "+" : "";
+        var check = isCheck ? "+"
+                    : "";
 
         // Castling
         if (malg == "e1g1" || malg == "e8g8") return $"O-O{check}";
@@ -249,7 +250,7 @@ public static class CommonChess
         }
 
         var checks = allMoves.Where(c => c.IsCheck);
-        var captures = allMoves.Where(c => c.IsCapture);
+        var captures = allMoves.Except(checks).Where(c => c.IsCapture);
         var interesting = GetInterestingNonCheckCapturesMoves(allMoves, pos.Move, 5);
 
         return new ChecksCapturesAttacks
