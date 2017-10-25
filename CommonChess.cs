@@ -9,6 +9,8 @@ using System.Text;
 // Various check and captures (with promotion): 1N1Q1r2/2P3P1/8/2k3b1/4R2P/3P1NR1/1P1B4/3K4 w - - 0 1   1N1Q1r2%2F2P3P1%2F8%2F2k3b1%2F4R2P%2F3P1NR1%2F1P1B4%2F3K4%20w%20-%20-%200%201
 // Castling and promo to K: r6r/1Pq2kP1/8/8/8/8/8/R3K2R w KQ - 0 0         r6r%2F1Pq2kP1%2F8%2F8%2F8%2F8%2F8%2FR3K2R%20w%20KQ%20-%200%200
 // Simple mate: 3k4/R7/8/8/8/8/8/3K3Q w - - 0 1          3k4%2FR7%2F8%2F8%2F8%2F8%2F8%2F3K3Q%20w%20-%20-%200%201
+// A pin as example of interesting move: 7k/8/P1K5/4r3/8/B7/8/8 w - - 0 1      7k%2F8%2FP1K5%2F4r3%2F8%2FB7%2F8%2F8%20w%20-%20-%200%201
+// Black pin: 5k2/5pp1/4p3/5P2/2pR2Pb/1P5P/8/K7 b - - 0 1    5k2%2F5pp1%2F4p3%2F5P2%2F2pR2Pb%2F1P5P%2F8%2FK7%20b%20-%20-%200%201       
 public class CandidateMove
 {
     public CandidateMove() {
@@ -65,7 +67,7 @@ public class ChecksCapturesAttacks
 {
     public IEnumerable<CandidateMove> Checks { get; set; }
     public IEnumerable<CandidateMove> Captures { get; set; }
-    public IEnumerable<CandidateMove> Attacks { get; set; }
+    public IEnumerable<CandidateMove> Interesting { get; set; }
 }
 
 public static class CommonChess
@@ -190,7 +192,7 @@ public static class CommonChess
 
         var board = pos.Board;
         (var x1, var y1, var x2, var y2) = MAlgToMatrix(malg);
-        var piece = board[x1, y1];
+        var piece = char.ToUpper(board[x1, y1]);
         var destSquare = malg.Substring(2, 2);
         var sourceCol = malg[0];
 
@@ -207,6 +209,15 @@ public static class CommonChess
         throw new Exception("Shouldn't get there");
     }
 
+    public static IEnumerable<CandidateMove> GetInterestingNonCheckCapturesMoves(IEnumerable<CandidateMove> moves, char sideToMove, int howMany)
+    {
+        var scoreLimit = 300;
+        var nonCC = moves.Where(c => !c.IsCheck && !c.IsCapture);
+
+        var topScore = moves.Max(c => c.Score);
+        return nonCC.OrderByDescending(c => c.Score).Take(howMany).Where(c => c.Score > topScore - scoreLimit);
+    }
+
     public static ChecksCapturesAttacks GetHumanCandidateMoves(string engineExe, string workingDir, string fen)
     {
         // TODO: Manage disambinguation of moves when two pieces can go to a square or capture there
@@ -218,9 +229,14 @@ public static class CommonChess
 
         (var kingx, var kingy) = FindOppositeKing(pos); // Optimization not to have to calculate king position every time
 
+        // Enrich moves with more info
         foreach (var c in allMoves)
         {
             c.IsCheck = IsCheck(pos, c.Move, kingx, kingy);
+
+            // Assign a score to mate so you can sort over it against other moves
+            if(c.IsMate)
+                c.Score = Math.Max(1_000_000 - c.MateNumberOfMoves * 100_000, 1_000); // i.e. mate in 15 would go negative otherwise ...
 
             var captured = DestinationSquare(pos, c.Move);
             if (captured != Position.EmptySquare)
@@ -234,14 +250,14 @@ public static class CommonChess
 
         var checks = allMoves.Where(c => c.IsCheck);
         var captures = allMoves.Where(c => c.IsCapture);
+        var interesting = GetInterestingNonCheckCapturesMoves(allMoves, pos.Move, 5);
 
         return new ChecksCapturesAttacks
         {
             Checks = checks,
             Captures = captures,
-            Attacks = null
+            Interesting = interesting
         };
-
     }
 
 
