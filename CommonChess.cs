@@ -8,6 +8,7 @@ using System.Text;
 // TEST POSITIONS (fen, encoded)
 // Various check and captures (with promotion): 1N1Q1r2/2P3P1/8/2k3b1/4R2P/3P1NR1/1P1B4/3K4 w - - 0 1   1N1Q1r2%2F2P3P1%2F8%2F2k3b1%2F4R2P%2F3P1NR1%2F1P1B4%2F3K4%20w%20-%20-%200%201
 // Castling and promo to K: r6r/1Pq2kP1/8/8/8/8/8/R3K2R w KQ - 0 0         r6r%2F1Pq2kP1%2F8%2F8%2F8%2F8%2F8%2FR3K2R%20w%20KQ%20-%200%200
+// Simple mate: 3k4/R7/8/8/8/8/8/3K3Q w - - 0 1          3k4%2FR7%2F8%2F8%2F8%2F8%2F8%2F3K3Q%20w%20-%20-%200%201
 public class CandidateMove
 {
     public CandidateMove() {
@@ -20,6 +21,8 @@ public class CandidateMove
     public string MoveAlg { get; set; }
     public bool IsCapture { get; set; }
     public bool IsCheck { get; set; }
+    public bool IsMate { get; set; }
+    public int MateNumberOfMoves { get; set; }
     public string CapturedPiece { get; set; }
     public List<string> BestContinuation { get; set; }
     public int Score { get; set; } // In centipeds
@@ -134,15 +137,25 @@ public static class CommonChess
 
         var idx = Array.FindIndex(tokens, x => x == "pv");
         if (idx == -1) return null; // skip over different info lines
-        c.Move = tokens[idx + 1];
+        c.Move = tokens[idx + 1].Trim();
         for(int i = idx + 2; i < tokens.Length; i++)
         {
-            c.BestContinuation.Add(tokens[i]);
+            c.BestContinuation.Add(tokens[i].Trim());
         }
         
         idx = Array.FindIndex(tokens, x => x == "score");
         if (idx == -1) return null; // skip over different info lines
-        c.Score = int.Parse(tokens[idx + 2]);
+        if (tokens[idx + 1] == "cp")
+        {
+            c.Score = int.Parse(tokens[idx + 2]);
+            c.IsMate = false;
+        }
+        else if (tokens[idx + 1] == "mate")
+        {
+            c.IsMate = true;
+            c.MateNumberOfMoves = int.Parse(tokens[idx + 2]);
+        }
+        else throw new Exception($"{tokens[idx + 1]} is an unsupported type of move");
 
         idx = Array.FindIndex(tokens, x => x == "depth");
         if (idx == -1) return null; // skip over different info lines
@@ -197,37 +210,30 @@ public static class CommonChess
     public static ChecksCapturesAttacks GetHumanCandidateMoves(string engineExe, string workingDir, string fen)
     {
         // TODO: Manage disambinguation of moves when two pieces can go to a square or capture there
-        var allMovesWithMultiplePromotions = GetCandidateMoves(engineExe, workingDir, fen).ToArray();
+        var allMovesWithMultiplePromotions = GetCandidateMoves(engineExe, workingDir, fen);
 
         //remove B & R promotions
-        var allMoves = allMovesWithMultiplePromotions.Where(c => c.Move.Length == 4 || (c.Move.Length == 5 && (c.Move[4] == 'q' || c.Move[4] == 'n')));
+        var allMoves = allMovesWithMultiplePromotions.Where(c => c.Move.Length == 4 || (c.Move.Length == 5 && (c.Move[4] == 'q' || c.Move[4] == 'n'))).ToList();
         var pos = FenToPosition(fen);
 
         (var kingx, var kingy) = FindOppositeKing(pos); // Optimization not to have to calculate king position every time
 
-        var allChecks = allMoves.Where(c => IsCheck(pos, c.Move, kingx, kingy));
-        foreach (var c in allChecks)
+        foreach (var c in allMoves)
         {
-            c.IsCheck = true;
-            c.MoveAlg = MAlgToAlg(pos, c.Move, c.IsCheck, c.IsCapture);
-        }
+            c.IsCheck = IsCheck(pos, c.Move, kingx, kingy);
 
-        var allCaptures = allMoves.Where(c => {
             var captured = DestinationSquare(pos, c.Move);
-            if(captured != Position.EmptySquare)
+            if (captured != Position.EmptySquare)
             {
                 c.CapturedPiece = captured.ToString().ToUpper();
-                return true;
+                c.IsCapture = true;
             }
-            return false; });
-        foreach (var c in allCaptures)
-        {
-            c.IsCapture = true;
+
             c.MoveAlg = MAlgToAlg(pos, c.Move, c.IsCheck, c.IsCapture);
         }
 
-        var checks = allChecks.OrderBy(c => c.Move);
-        var captures = allCaptures.Except(checks).OrderBy(c => c.Move);
+        var checks = allMoves.Where(c => c.IsCheck);
+        var captures = allMoves.Where(c => c.IsCapture);
 
         return new ChecksCapturesAttacks
         {
