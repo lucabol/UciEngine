@@ -16,6 +16,7 @@ public static class HumanMoves
         log.Info($"Engine command is {engineCommand}");
 
         var workingDir = CommonWeb.GetWorkingDirectory(req);
+        
         log.Info($"Working dir is {workingDir}");
 
        string fen1 = req.GetQueryNameValuePairs()

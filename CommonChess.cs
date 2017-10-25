@@ -105,12 +105,8 @@ public static class CommonChess
 
     public static (string output, string errors) GetEngineText(string engineExe, string workingDir, string commands)
     {
-
-        Directory.SetCurrentDirectory(workingDir);
-
-        // Run engine
         var process = new Process();
-        process.StartInfo.FileName = engineExe;
+        process.StartInfo.FileName = Path.Combine(workingDir, engineExe);
         process.StartInfo.Arguments = "";
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.RedirectStandardOutput = true;
